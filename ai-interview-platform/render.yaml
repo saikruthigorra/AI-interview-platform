@@ -1,52 +1,36 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Render blueprint — deploy the whole app as ONE Docker service.
-# The website and the API share a single URL; TiDB Cloud is the external DB.
-#
-#   Render Dashboard → New + → Blueprint → pick this repo → Apply
-#
-# Values marked `sync: false` are secrets: Render asks for them once, stores
-# them in the dashboard and never exposes them in the repo.
-# The repo root must contain this file and the Dockerfile — publish the
-# ai-interview-platform folder itself, not a folder above it.
-# ─────────────────────────────────────────────────────────────────────────────
 services:
   - type: web
     name: interviewiq
     runtime: docker
     plan: free
-    region: singapore              # closest to India; can't be changed later
+    region: singapore
+    rootDir: ai-interview-platform
     dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
-    autoDeploy: true               # every git push redeploys
+    autoDeploy: true
     envVars:
-      # ── database: your TiDB Cloud Serverless cluster ──
       - key: SPRING_PROFILES_ACTIVE
         value: "tidb"
       - key: TIDB_HOST
-        sync: false                # e.g. gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+        sync: false
       - key: TIDB_PORT
         value: "4000"
       - key: TIDB_USER
-        sync: false                # e.g. 2Txxxxxx.root
+        sync: false
       - key: TIDB_PASSWORD
         sync: false
       - key: TIDB_DATABASE
         value: "interviewiq"
       - key: TIDB_SSL_MODE
-        value: "VERIFY_IDENTITY"   # TiDB Cloud Serverless requires TLS
-
-      # ── security ──
+        value: "VERIFY_IDENTITY"
       - key: APP_JWT_SECRET
-        generateValue: true        # Render generates a strong random secret
+        generateValue: true
       - key: APP_ADMIN_PASSWORD
-        sync: false                # the bootstrap admin's password
-
-      # ── demo data (safe to keep on: seeding is idempotent) ──
+        sync: false
       - key: APP_SEED
         value: "true"
       - key: APP_DEMO_PASSWORD
         value: "Demo!Access2026"
-
-      # ── single origin serves UI + API, so CORS never actually applies ──
       - key: APP_CORS_ORIGINS
         value: "*"
