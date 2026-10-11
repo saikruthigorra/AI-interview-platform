@@ -1,0 +1,13 @@
+# keep the build context small and reproducible
+**/node_modules
+**/target
+**/dist
+backend/src/main/resources/static
+.git
+.idea
+.vscode
+*.mv.db
+*.trace.db
+.env
+.env.local
+sandbox-setup

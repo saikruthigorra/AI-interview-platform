@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: interviewiq-api
+  profiles:
+    # 'local' = file-based H2 in MySQL mode (no setup). Override with
+    # SPRING_PROFILES_ACTIVE=tidb to hit a real TiDB Cloud Serverless cluster.
+    default: local
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:${PORT:8080}}   # SERVER_PORT wins; PaaS platforms usually set PORT
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  security:
+    jwt-secret: ${APP_JWT_SECRET:}
+    token-ttl-minutes: ${APP_JWT_TTL_MINUTES:120}
+    admin-email: ${APP_ADMIN_EMAIL:admin@interviewiq.dev}
+    admin-password: ${APP_ADMIN_PASSWORD:}
+  ai:
+    # heuristic | openai-compatible
+    provider: ${APP_AI_PROVIDER:heuristic}
+    api-key: ${APP_AI_API_KEY:}
+    model: ${APP_AI_MODEL:gpt-4o-mini}
+    base-url: ${APP_AI_BASE_URL:https://api.openai.com/v1}
+    timeout-seconds: ${APP_AI_TIMEOUT:45}
+  seed:
+    enabled: ${APP_SEED:true}
+  demo:
+    # Shared password for the seeded demo accounts. Only used while seeding is on.
+    password: ${APP_DEMO_PASSWORD:Demo!Access2026}
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS:*}
+
+logging:
+  level:
+    root: INFO
+    com.interviewiq: INFO
+    org.hibernate.SQL: WARN
+
+---
+# ─── Local profile: embedded, MySQL-dialect DB ────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:h2:file:${LOCAL_DB_PATH:/tmp/interviewiq};MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+
+---
+# ─── TiDB Cloud Serverless / self-hosted TiDB ────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: tidb
+  datasource:
+    url: jdbc:mysql://${TIDB_HOST:127.0.0.1}:${TIDB_PORT:4000}/${TIDB_DATABASE:interviewiq}?sslMode=${TIDB_SSL_MODE:VERIFY_IDENTITY}&enabledTLSProtocols=TLSv1.2,TLSv1.3&useSSL=true&serverTimezone=UTC&characterEncoding=utf8&rewriteBatchedStatements=true
+    username: ${TIDB_USER:root}
+    password: ${TIDB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+      # TiDB closes idle connections after ~5-10 min by default (wait_timeout).
+      max-lifetime: 240000
+      keepalive-time: 120000
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
