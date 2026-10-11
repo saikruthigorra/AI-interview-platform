@@ -23,13 +23,26 @@ RUN npm run build
 # ── stage 2: build the jar with the website inside it ───────────────────────
 FROM maven:3.9-eclipse-temurin-21 AS api
 WORKDIR /build
-COPY backend/pom.xml .
+COPY backend/pom.xml backend/maven-settings.xml ./
+# NOTE: both Maven steps use -s ./maven-settings.xml (Google's Maven Central
+# mirror) plus a retry loop with backoff. Maven Central rate-limits shared CI
+# IPs with HTTP 429, which used to kill Render builds at random — the mirror
+# sidesteps the limiter and the retries ride out any transient failure.
 # Warm the dependency cache (layer only invalidates when the pom changes).
 # Non-fatal: anything it misses is fetched again by the package step below.
-RUN mvn -q -B dependency:go-offline || true
+RUN for attempt in 1 2 3; do \
+      mvn -q -B -s ./maven-settings.xml dependency:go-offline && break; \
+      echo "dependency:go-offline failed (attempt $attempt/3) — retrying…"; \
+      sleep $((attempt * 20)); \
+    done; exit 0
 COPY backend/src ./src
 COPY --from=web /web/dist ./src/main/resources/static
-RUN mvn -q -B -DskipTests package
+RUN for attempt in 1 2 3 4 5; do \
+      mvn -q -B -s ./maven-settings.xml -DskipTests package && break; \
+      echo "mvn package failed (attempt $attempt/5) — retrying…"; \
+      if [ "$attempt" = 5 ]; then exit 1; fi; \
+      sleep $((attempt * 20)); \
+    done
 
 # ── stage 3: runtime ────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Docker-build Maven settings for InterviewIQ.
+
+  Routes Maven Central through Google's public mirror
+  (https://maven-central.storage-download.googleapis.com/maven2), a complete
+  copy of Central that doesn't rate-limit shared CI IPs the way
+  repo.maven.apache.org does (HTTP 429 "Too Many Requests" breaks Render
+  builds running on shared IPs).
+
+  Used ONLY by the Dockerfile (-s flag). Local builds are untouched and keep
+  using Maven Central directly.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>google-maven-central</id>
+      <name>Google Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/maven2</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>
